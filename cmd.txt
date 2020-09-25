@@ -1,3 +1,8 @@
-1000100
-1000A00
-1000A00
+.data
+a Ah
+mass 1,2,Bh
+.code
+start:
+mov ax, 1
+add bx, ax
+mov [3], Fh
