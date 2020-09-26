@@ -3,6 +3,8 @@ a Ah
 mass 1,2,Bh
 .code
 start:
-mov ax, 1
-add bx, ax
-mov [3], Fh
+mov mass[2], 2
+add [2], 3o
+mov ax, FAh
+mov bx, mass[ax]
+mov a, 0110b
