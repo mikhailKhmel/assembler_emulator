@@ -3,8 +3,11 @@ a Ah
 mass 1,2,Bh
 .code
 start:
-mov mass[2], 2
-add [2], 3o
-mov ax, FAh
-mov bx, mass[ax]
-mov a, 0110b
+mov ax, 1
+mov mass[1], Fh
+mov a, 1
+add ax, mass[2]
+mov [15], FFh
+l1:
+mov dx, 5
+jmp start
