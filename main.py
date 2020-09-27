@@ -53,6 +53,7 @@ class Processor:
         print(f'{curr_cmd}')
         cmd_type = curr_cmd[0]
         op1 = curr_cmd[1][:-1]
+        op2 = ''
         try:
             op2 = curr_cmd[2]
         except:
@@ -71,11 +72,12 @@ class Processor:
             cmd_code = '0101'
         elif cmd_type == 'jmp':
             cmd_code = '0110'
-            #TODO: loop
+        elif cmd_type == 'loop':
+            cmd_code = '0111'
             # etc
 
         # определение ПРИЕМНИКА
-        if cmd_code == '0110':
+        if cmd_code == '0110' or cmd_code == '0111':
             machine_code = cmd_code + format(self.label_memory.index(curr_cmd[1]), 'b')
             self.cmd_memory[self.cmd_memory.index(0)] = int(machine_code, 2)
             return
@@ -88,7 +90,7 @@ class Processor:
         if op1_code == '':
             try:
                 ind = op1.index('[')
-                if op1 in self.label_memory or op1[:ind] in self.label_memory:
+                if op1 in self.variables_memory or op1[:ind] in self.variables_memory:
                     op1_code = '10'  # переменная
             except:
                 op1_code = '10'
@@ -104,7 +106,7 @@ class Processor:
         if op2_code == '':
             try:
                 ind = op2.index('[')
-                if op2 in self.label_memory or op2[:ind] in self.label_memory:
+                if op2 in self.variables_memory or op2[:ind] in self.variables_memory:
                     op2_code = '10'  # переменная
             except:
                 # непосредственное значение
@@ -121,20 +123,33 @@ class Processor:
             elif op1 == 'dx':
                 op1_value = '00000100'
         elif op1_code == '01':
-            data_address = format(self.from_any_to_int(op1[1:-1]), 'b')
-            op1_value = self.append_zeros(data_address, 8)
+            n = op1[1:-1]
+            regs = ['', 'ax', 'bx', 'cx', 'dx']
+            if n in regs:
+                op1_value = self.append_zeros(format(regs.index(n), 'b'), 8)
+            elif '+' in n:
+                k = n.split('+')
+                op1_value = self.append_zeros(
+                    format(self.reg_memory[regs.index(k[0])] + self.reg_memory[regs.index(k[1])], 'b'), 8)
+            elif '-' in n:
+                k = n.split('-')
+                op1_value = self.append_zeros(
+                    format(self.reg_memory[regs.index(k[0])] - self.reg_memory[regs.index(k[1])], 'b'), 8)
+            elif n in self.variables_memory:
+                op1_value = self.append_zeros(format(self.variables_memory.index(n), 'b'), 8)
+            # TODO: определить тип первого операнда и второго. реализовано операция над двумя регистрами.
         elif op1_code == '10':
             if '[' in op1:
                 varname = op1[:op1.index('[')]
                 shift = op1[op1.index('[') + 1:-1]
                 if shift == 'ax':
-                    shift = self.reg_memory[0]
-                elif shift == 'bx':
                     shift = self.reg_memory[1]
-                elif shift == 'cx':
+                elif shift == 'bx':
                     shift = self.reg_memory[2]
-                elif shift == 'dx':
+                elif shift == 'cx':
                     shift = self.reg_memory[3]
+                elif shift == 'dx':
+                    shift = self.reg_memory[4]
                 else:
                     shift = int(shift)
                 address = self.variables_memory.index(varname) + shift
@@ -153,20 +168,32 @@ class Processor:
             elif op2 == 'dx':
                 op2_value = '00000100'
         elif op2_code == '01':
-            data_address = format(self.from_any_to_int(op2[1:-1]), 'b')
-            op2_value = self.append_zeros(data_address, 8)
+            n = op2[1:-1]
+            regs = ['', 'ax', 'bx', 'cx', 'dx']
+            if n in regs:
+                op2_value = self.append_zeros(format(regs.index(n), 'b'), 8)
+            elif '+' in n:
+                k = n.split('+')
+                op2_value = self.append_zeros(
+                    format(self.reg_memory[regs.index(k[0])] + self.reg_memory[regs.index(k[1])], 'b'), 8)
+            elif '-' in n:
+                k = n.split('-')
+                op2_value = self.append_zeros(
+                    format(self.reg_memory[regs.index(k[0])] - self.reg_memory[regs.index(k[1])], 'b'), 8)
+            elif n in self.variables_memory:
+                op2_value = self.append_zeros(format(self.variables_memory.index(n), 'b'), 8)
         elif op2_code == '10':
             if '[' in op2:
                 varname = op2[:op2.index('[')]
                 shift = op2[op2.index('[') + 1:-1]
                 if shift == 'ax':
-                    shift = self.reg_memory[0]
-                elif shift == 'bx':
                     shift = self.reg_memory[1]
-                elif shift == 'cx':
+                elif shift == 'bx':
                     shift = self.reg_memory[2]
-                elif shift == 'dx':
+                elif shift == 'cx':
                     shift = self.reg_memory[3]
+                elif shift == 'dx':
+                    shift = self.reg_memory[4]
                 else:
                     shift = int(shift)
                 address = self.variables_memory.index(varname) + shift
@@ -219,11 +246,17 @@ class Processor:
             print(f'{regs[i]}: {bin(self.reg_memory[i])}')
 
     def execute_command(self, curr_cmd: int):
-        if curr_cmd < 24:
-            curr_cmd_str = format(curr_cmd, 'b')
-            cmd_type = curr_cmd_str[0:3]
-            if cmd_type == '110':  # jmp
+        curr_cmd_str = format(curr_cmd, 'b')
+        cmd_type = curr_cmd_str[0:3]
+        if self.append_zeros(cmd_type, 4) == '0110':  # jmp
+            self.pc = int(curr_cmd_str[3:], 2) - 1
+            return
+        elif self.append_zeros(cmd_type, 4) == '0111':  # loop
+            self.reg_memory[3] -= 1  # cx
+            if self.reg_memory[3] != 0:
                 self.pc = int(curr_cmd_str[3:], 2) - 1
+                return
+            else:
                 return
         curr_cmd_str = self.append_zeros(format(curr_cmd, 'b'), 24)
 

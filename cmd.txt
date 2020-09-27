@@ -1,13 +1,9 @@
 .data
-a Ah
-mass 1,2,Bh
+mass 1,2,3
 .code
 start:
-mov ax, 1
-mov mass[1], Fh
-mov a, 1
-add ax, mass[2]
-mov [15], FFh
+mov cx, 3
 l1:
-mov dx, 5
-jmp start
+add ax, [bx]
+add bx, 1
+loop l1
