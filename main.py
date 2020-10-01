@@ -2,12 +2,13 @@ import sys
 
 
 class Processor:
-    cmd_memory = [0 for _ in range(20)]
-    data_memory = [0 for _ in range(20)]
+    SIZE = 256
+    cmd_memory = [0 for _ in range(SIZE)]
+    data_memory = [0 for _ in range(SIZE)]
     reg_memory = [0 for _ in range(5)]
-    label_memory = [0 for _ in range(20)]
-    variables_memory = [0 for _ in range(20)]
-    program_memory = ['' for _ in range(20)]
+    label_memory = [0 for _ in range(SIZE)]
+    variables_memory = [0 for _ in range(SIZE)]
+    program_memory = ['' for _ in range(SIZE)]
 
     def __init__(self):
         self.pc = 0
@@ -123,21 +124,37 @@ class Processor:
             elif op1 == 'dx':
                 op1_value = '00000100'
         elif op1_code == '01':
-            n = op1[1:-1]
+            op1_list = []
+            if '+' in op1:
+                op1_list = op1.split('+')
+            elif '-' in op1:
+                op1_list = op1.split('-')
+
+            for i in range(len(op1_list)):
+                if '[' in op1_list[i]:
+                    op1_list[i] = op1_list[i][1:]
+                elif ']' in op1_list[i]:
+                    op1_list[i] = op1_list[i][:-1]
+
             regs = ['', 'ax', 'bx', 'cx', 'dx']
-            if n in regs:
-                op1_value = self.append_zeros(format(regs.index(n), 'b'), 8)
-            elif '+' in n:
-                k = n.split('+')
-                op1_value = self.append_zeros(
-                    format(self.reg_memory[regs.index(k[0])] + self.reg_memory[regs.index(k[1])], 'b'), 8)
-            elif '-' in n:
-                k = n.split('-')
-                op1_value = self.append_zeros(
-                    format(self.reg_memory[regs.index(k[0])] - self.reg_memory[regs.index(k[1])], 'b'), 8)
-            elif n in self.variables_memory:
-                op1_value = self.append_zeros(format(self.variables_memory.index(n), 'b'), 8)
-            # TODO: определить тип первого операнда и второго. реализовано операция над двумя регистрами.
+            a1_address = 0
+            a2_address = 0
+            if op1_list[0] in regs:
+                a1_address = self.reg_memory[regs.index(op1_list[0])]
+            elif op1_list[0] in self.variables_memory:
+                a1_address = self.variables_memory.index(op1_list[0])
+            else:
+                a1_address = self.from_any_to_int(op1_list[0])
+            if op1_list[1] in regs:
+                a2_address = self.reg_memory[regs.index(op1_list[1])]
+            elif op1_list[1] in self.variables_memory:
+                a2_address = self.variables_memory.index(op1_list[1])
+            else:
+                a2_address = self.from_any_to_int(op1_list[1])
+            if '+' in op1:
+                op1_value = self.append_zeros(format(a1_address + a2_address, 'b'), 8)
+            elif '-' in op1:
+                op1_value = self.append_zeros(format(a1_address - a2_address, 'b'), 8)
         elif op1_code == '10':
             if '[' in op1:
                 varname = op1[:op1.index('[')]
@@ -168,20 +185,35 @@ class Processor:
             elif op2 == 'dx':
                 op2_value = '00000100'
         elif op2_code == '01':
-            n = op2[1:-1]
+            op2_list = []
+            if '+' in op2:
+                op2_list = op2.split('+')
+            elif '-' in op2:
+                op2_list = op2.split('-')
+            for i in range(len(op2_list)):
+                if '[' in op2_list[i]:
+                    op2_list[i] = op2_list[i][1:]
+                elif ']' in op2_list[i]:
+                    op2_list[i] = op2_list[i][:-1]
             regs = ['', 'ax', 'bx', 'cx', 'dx']
-            if n in regs:
-                op2_value = self.append_zeros(format(regs.index(n), 'b'), 8)
-            elif '+' in n:
-                k = n.split('+')
-                op2_value = self.append_zeros(
-                    format(self.reg_memory[regs.index(k[0])] + self.reg_memory[regs.index(k[1])], 'b'), 8)
-            elif '-' in n:
-                k = n.split('-')
-                op2_value = self.append_zeros(
-                    format(self.reg_memory[regs.index(k[0])] - self.reg_memory[regs.index(k[1])], 'b'), 8)
-            elif n in self.variables_memory:
-                op2_value = self.append_zeros(format(self.variables_memory.index(n), 'b'), 8)
+            a1_address = 0
+            a2_address = 0
+            if op2_list[0] in regs:
+                a1_address = self.reg_memory[regs.index(op2_list[0])]
+            elif op2_list[0] in self.variables_memory:
+                a1_address = self.variables_memory.index(op2_list[0])
+            else:
+                a1_address = self.from_any_to_int(op2_list[0])
+            if op2_list[1] in regs:
+                a2_address = self.reg_memory[regs.index(op2_list[1])]
+            elif op2_list[1] in self.variables_memory:
+                a2_address = self.variables_memory.index(op2_list[1])
+            else:
+                a2_address = self.from_any_to_int(op2_list[1])
+            if '+' in op2:
+                op2_value = self.append_zeros(format(a1_address + a2_address, 'b'), 8)
+            elif '-' in op2:
+                op2_value = self.append_zeros(format(a1_address - a2_address, 'b'), 8)
         elif op2_code == '10':
             if '[' in op2:
                 varname = op2[:op2.index('[')]
@@ -252,9 +284,12 @@ class Processor:
             self.pc = int(curr_cmd_str[3:], 2) - 1
             return
         elif self.append_zeros(cmd_type, 4) == '0111':  # loop
-            self.reg_memory[3] -= 1  # cx
             if self.reg_memory[3] != 0:
-                self.pc = int(curr_cmd_str[3:], 2) - 1
+                self.reg_memory[3] -= 1  # cx
+                first_cmd = int(curr_cmd_str[3:], 2)
+                last_cmd = len([i for i in self.program_memory if i != ''])
+                for i in range(first_cmd, last_cmd):
+                    self.new_command_analyze(self.program_memory[i])
                 return
             else:
                 return
@@ -293,6 +328,11 @@ class Processor:
                 if op2_type == '00':  # reg
                     self.reg_memory[int(op1_value, 2)] += self.reg_memory[int(op2_value, 2)]
                 elif op2_type in ['01', '10']:  # data or var
+                    o1 = int(op1_value, 2)
+                    o2 = int(op2_value, 2)
+                    o1_value = self.reg_memory[int(op1_value, 2)]
+                    o2_value = self.data_memory[int(op2_value, 2)]
+
                     self.reg_memory[int(op1_value, 2)] += self.data_memory[int(op2_value, 2)]
                 elif op2_type == '11':  # literal
                     self.reg_memory[int(op1_value, 2)] += int(op2_value, 2)
