@@ -1,8 +1,11 @@
+import os
 import sys
+
+from prettytable import PrettyTable
 
 
 class Processor:
-    SIZE = 256
+    SIZE = 50
     cmd_memory = [0 for _ in range(SIZE)]
     data_memory = [0 for _ in range(SIZE)]
     reg_memory = [0 for _ in range(5)]
@@ -25,7 +28,7 @@ class Processor:
             return int(number)
 
     def data_converter(self, curr_cmd):
-        print(f'{curr_cmd}')
+        # print(f'{curr_cmd}')
         name = curr_cmd[0]
         if not ',' in curr_cmd[1]:  # если обычная переменная
             ind = self.variables_memory.index(0)
@@ -107,11 +110,14 @@ class Processor:
         if op2_code == '':
             try:
                 ind = op2.index('[')
-                if op2 in self.variables_memory or op2[:ind] in self.variables_memory:
+                if op2[:ind] in self.variables_memory:
                     op2_code = '10'  # переменная
             except:
-                # непосредственное значение
-                op2_code = '11'
+                if op2 in self.variables_memory:
+                    op2_code = '10'
+                else:
+                    # непосредственное значение
+                    op2_code = '11'
 
         # преобразование значение ПРЕМНИКА в бинарное значение
         if op1_code == '00':
@@ -186,34 +192,43 @@ class Processor:
                 op2_value = '00000100'
         elif op2_code == '01':
             op2_list = []
-            if '+' in op2:
-                op2_list = op2.split('+')
-            elif '-' in op2:
-                op2_list = op2.split('-')
-            for i in range(len(op2_list)):
-                if '[' in op2_list[i]:
-                    op2_list[i] = op2_list[i][1:]
-                elif ']' in op2_list[i]:
-                    op2_list[i] = op2_list[i][:-1]
             regs = ['', 'ax', 'bx', 'cx', 'dx']
-            a1_address = 0
-            a2_address = 0
-            if op2_list[0] in regs:
-                a1_address = self.reg_memory[regs.index(op2_list[0])]
-            elif op2_list[0] in self.variables_memory:
-                a1_address = self.variables_memory.index(op2_list[0])
+            if not '+' in op2 or not '-' in op2:
+                op2 = op2[1:-1]
+                if op2 in regs:
+                    op2_value = self.append_zeros(format(self.reg_memory[regs.index(op2)], 'b'), 8)
+                elif op2 in self.variables_memory:
+                    op2_value = self.append_zeros(format(self.variables_memory.index(op2), 'b'), 8)
             else:
-                a1_address = self.from_any_to_int(op2_list[0])
-            if op2_list[1] in regs:
-                a2_address = self.reg_memory[regs.index(op2_list[1])]
-            elif op2_list[1] in self.variables_memory:
-                a2_address = self.variables_memory.index(op2_list[1])
-            else:
-                a2_address = self.from_any_to_int(op2_list[1])
-            if '+' in op2:
-                op2_value = self.append_zeros(format(a1_address + a2_address, 'b'), 8)
-            elif '-' in op2:
-                op2_value = self.append_zeros(format(a1_address - a2_address, 'b'), 8)
+                if '+' in op2:
+                    op2_list = op2.split('+')
+                elif '-' in op2:
+                    op2_list = op2.split('-')
+
+                for i in range(len(op2_list)):
+                    if '[' in op2_list[i]:
+                        op2_list[i] = op2_list[i][1:]
+                    elif ']' in op2_list[i]:
+                        op2_list[i] = op2_list[i][:-1]
+
+                a1_address = 0
+                a2_address = 0
+                if op2_list[0] in regs:
+                    a1_address = self.reg_memory[regs.index(op2_list[0])]
+                elif op2_list[0] in self.variables_memory:
+                    a1_address = self.variables_memory.index(op2_list[0])
+                else:
+                    a1_address = self.from_any_to_int(op2_list[0])
+                if op2_list[1] in regs:
+                    a2_address = self.reg_memory[regs.index(op2_list[1])]
+                elif op2_list[1] in self.variables_memory:
+                    a2_address = self.variables_memory.index(op2_list[1])
+                else:
+                    a2_address = self.from_any_to_int(op2_list[1])
+                if '+' in op2:
+                    op2_value = self.append_zeros(format(a1_address + a2_address, 'b'), 8)
+                elif '-' in op2:
+                    op2_value = self.append_zeros(format(a1_address - a2_address, 'b'), 8)
         elif op2_code == '10':
             if '[' in op2:
                 varname = op2[:op2.index('[')]
@@ -267,15 +282,20 @@ class Processor:
             # self.cmd_memory[self.cmd_memory.index(0)] = int('001000000000000000000000', 2)
 
     def output_info(self):
-        print('ADDRESS\tCOMMAND MEMORY\tLITERALLY COMMAND\tDATA MEMORY\tVARIABLES MEMORY\tLABEL MEMORY')
+        table = PrettyTable()
+        table.field_names = ['ADDRESS', 'COMMAND MEMORY', 'LITERALLY COMMAND', 'DATA MEMORY', 'VARIABLES MEMORY',
+                             'LABEL MEMORY']
         for i in range(len(self.cmd_memory)):
-            print(
-                f'{i}: {bin(self.cmd_memory[i])}\t{self.program_memory[i]}\t{bin(self.data_memory[i])}\t{self.variables_memory[i]}\t{self.label_memory[i]}')
-
+            table.add_row(
+                [i, bin(self.cmd_memory[i]), self.program_memory[i], bin(self.data_memory[i]), self.variables_memory[i],
+                 self.label_memory[i]])
+        print(table)
+        table1 = PrettyTable()
+        table1.field_names = ['ADDRESS', 'REGISTER MEMORY']
         regs = ['', 'ax', 'bx', 'cx', 'dx']
-        print('REGISTER MEMORY:')
         for i in range(1, len(self.reg_memory)):
-            print(f'{regs[i]}: {bin(self.reg_memory[i])}')
+            table1.add_row([regs[i], bin(self.reg_memory[i])])
+        print(table1)
 
     def execute_command(self, curr_cmd: int):
         curr_cmd_str = format(curr_cmd, 'b')
@@ -288,10 +308,12 @@ class Processor:
                 self.reg_memory[3] -= 1  # cx
                 first_cmd = int(curr_cmd_str[3:], 2)
                 last_cmd = len([i for i in self.program_memory if i != ''])
-                for i in range(first_cmd, last_cmd):
-                    self.new_command_analyze(self.program_memory[i])
+                self.pc = first_cmd
+                # for i in range(first_cmd, last_cmd):
+                #     self.new_command_analyze(self.program_memory[i])
                 return
             else:
+                self.pc += 1
                 return
         curr_cmd_str = self.append_zeros(format(curr_cmd, 'b'), 24)
 
@@ -328,11 +350,6 @@ class Processor:
                 if op2_type == '00':  # reg
                     self.reg_memory[int(op1_value, 2)] += self.reg_memory[int(op2_value, 2)]
                 elif op2_type in ['01', '10']:  # data or var
-                    o1 = int(op1_value, 2)
-                    o2 = int(op2_value, 2)
-                    o1_value = self.reg_memory[int(op1_value, 2)]
-                    o2_value = self.data_memory[int(op2_value, 2)]
-
                     self.reg_memory[int(op1_value, 2)] += self.data_memory[int(op2_value, 2)]
                 elif op2_type == '11':  # literal
                     self.reg_memory[int(op1_value, 2)] += int(op2_value, 2)
@@ -350,6 +367,7 @@ class Processor:
                     self.data_memory[int(op1_value, 2)] += self.data_memory[int(op2_value, 2)]
                 elif op2_type == '11':  # literal
                     self.data_memory[int(op1_value, 2)] += int(op2_value, 2)
+        self.pc += 1
 
 
 def main(program):
@@ -358,12 +376,13 @@ def main(program):
         processor.new_command_analyze(cmd)
     while processor.pc < len(processor.cmd_memory):
         processor.execute_command(processor.cmd_memory[processor.pc])
-        processor.pc += 1
+
     processor.output_info()
 
 
 if __name__ == '__main__':
     file_name = sys.argv[1]
-    with open(file_name, 'r') as f:
+    full_path = os.path.dirname(os.path.abspath(__file__)) + '\\' + file_name
+    with open(full_path, 'r') as f:
         program = [line.strip() for line in f.readlines()]
         main(program)
