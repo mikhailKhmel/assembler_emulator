@@ -1,10 +1,16 @@
 .data
-mass 1,Ah
+mass 1,Ah,2
+mass1 2,1,3
 .code
 start:
-mov cx, 2
-mov bx, mass
+mov cx, 3
+mov bl, mass
+mov dl, mass1
 l1:
-add ax, [bx]
-add bx, 1
+mov al, [bl]
+mov bh, [dl]
+mul bh
+add [30], ax
+add bl, 1
+add dl, 1
 loop l1
