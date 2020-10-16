@@ -1,0 +1,10 @@
+.data
+mass 1,Ah,011011b
+.code
+start:
+mov cx, 3
+mov bx, mass
+l1:
+add ax, [bx]
+add bx, 1
+loop l1

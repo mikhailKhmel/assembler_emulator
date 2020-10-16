@@ -1,6 +1,5 @@
 import os
 import sys
-
 from typing import Tuple
 
 from prettytable import PrettyTable
@@ -34,11 +33,8 @@ class Processor:
         else:
             return int(number)
 
-    def check_max(self, n: int) -> bool:
-        return True if n < 65536 else False
-
     def original_or_overflow(self, n: int) -> int:
-        if self.check_max(n):
+        if n < 65536:
             self.CF = 0
             return n
         else:
@@ -257,7 +253,7 @@ class Processor:
                              'LABEL MEMORY']
         for i in range(len(self.program_memory)):
             table.add_row(
-                [i, int(self.cmd_memory[i]), self.program_memory[i], int(self.data_memory[i]), self.variables_memory[i],
+                [i, hex(self.cmd_memory[i]), self.program_memory[i], hex(self.data_memory[i]), self.variables_memory[i],
                  self.label_memory[i]])
         print(table)
 
@@ -265,7 +261,7 @@ class Processor:
         table1.field_names = ['ADDRESS', 'REGISTER MEMORY']
         regs = ['ax', 'bx', 'cx', 'dx']
         for i in range(len(self.reg_memory)):
-            table1.add_row([regs[i], bin(self.reg_memory[i])])
+            table1.add_row([regs[i], hex(self.reg_memory[i])])
         print(table1)
 
         table2 = PrettyTable()
@@ -313,7 +309,8 @@ class Processor:
         source_value = self.source_value_definition(op2_type, op2_value)
 
         if op1_type == '00':
-            self.data_memory[int(op1_value, 2)] += source_value
+            self.data_memory[int(op1_value, 2)] = self.data_memory[int(
+                op1_value, 2)] + source_value + self.CF
         elif op1_type == '01':
             regs_reverse = {v: k for k, v in self.regs.items()}
             s1 = self.get_register_value(
@@ -329,7 +326,7 @@ class Processor:
             return
 
     # команда MUL
-    def mul(self, op1_type, op1_value):
+    def mul(self, op1_value):
         regs_reverse = {v: k for k, v in self.regs.items()}
         reg = regs_reverse[op1_value]
         if reg[-1] == 'h' or reg[-1] == 'l':
@@ -368,7 +365,7 @@ class Processor:
         elif cmd_type == '0100':
             self.loop(op1_value)
         elif cmd_type == '0101':
-            self.mul(op1_type, op1_value)
+            self.mul(op1_value)
 
 
 def main(program):
